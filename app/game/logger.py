@@ -22,6 +22,7 @@ _FIELDNAMES = [
     "given_answer",
     "correct",
     "setup_retries",
+    "failed_placements",
     "setup_seconds",
     "answer_seconds",
 ]
@@ -51,6 +52,7 @@ class RoundLogger:
                     "given_answer": result.given_answer,
                     "correct": result.correct,
                     "setup_retries": result.setup_retries,
+                    "failed_placements": result.failed_placements,
                     "setup_seconds": round(result.setup_seconds, 3),
                     "answer_seconds": round(result.answer_seconds, 3),
                 }

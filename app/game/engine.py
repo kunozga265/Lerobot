@@ -28,13 +28,14 @@ class GameState(Enum):
 @dataclass
 class RoundResult:
     round_number: int
-    problem: Problem  # verified/ground-truth problem (may differ from planned_problem)
+    problem: Problem  # the sum the robot was commanded to set up (same as planned_problem)
     given_answer: int
     correct: bool
     planned_problem: Problem
     setup_retries: int
     setup_seconds: float
     answer_seconds: float
+    failed_placements: int = 0  # place_to() calls that reported failure (robot reliability metric)
 
 
 class AnswerWatcher:
@@ -104,6 +105,7 @@ class GameEngine:
         self._stop_requested = False
         self._skip_requested = False
         self._force_submit_requested = False
+        self._boxes_ready_requested = False
 
     # --- facilitator hotkeys -------------------------------------------------
     def request_force_submit(self) -> None:
@@ -117,6 +119,10 @@ class GameEngine:
 
     def request_go_home(self) -> None:
         self.robot.go_home()
+
+    def request_boxes_ready(self) -> None:
+        """Helper confirms the shapes are back on their margin spots (Enter)."""
+        self._boxes_ready_requested = True
 
     # --- game loop -------------------------------------------------------------
     def run_game(self) -> None:
@@ -138,7 +144,7 @@ class GameEngine:
             self.round_number += 1
 
             setup_start = time.monotonic()
-            problem, setup_retries = self._round_setup(planned)
+            problem, failed_placements = self._round_setup(planned)
             setup_seconds = time.monotonic() - setup_start
             if self._stop_requested:
                 return
@@ -150,45 +156,26 @@ class GameEngine:
                 return
 
             correct = self._evaluate(problem, given)
-            self._feedback(planned, problem, given, correct, setup_retries, setup_seconds, answer_seconds)
-            self._round_reset()
+            self._feedback(planned, problem, given, correct, failed_placements, setup_seconds, answer_seconds)
+            self._round_reset(wait_for_helper=self.round_number < len(problems))
 
         self._set_state(GameState.END_SCREEN)
 
     def _round_setup(self, planned: Problem) -> tuple[Problem, int]:
+        """Command the robot to place `a` pieces left and `b` right. The sum shown is what
+        was commanded, not a vision recount, so a dropped piece never changes the answer."""
         self._set_state(GameState.ROUND_SETUP)
         self._status("Watch the robot…")
-        actual_a, actual_b, attempts = self._setup_boxes(planned.a, planned.b)
-        problem = Problem(actual_a, actual_b, planned.operation)
+        failed = 0
+        for box, count in (("left", planned.a), ("right", planned.b)):
+            for _ in range(count):
+                if self._stop_requested:
+                    return planned, failed
+                if not self.robot.place_to(box):
+                    failed += 1
         if self.on_round_ready:
-            self.on_round_ready(self.round_number, problem)
-        return problem, max(0, attempts - 1)  # attempts=1 means it succeeded first try, i.e. 0 retries
-
-    def _setup_boxes(self, target_a: int, target_b: int, max_attempts: int = 3) -> tuple[int, int, int]:
-        state = self.vision.get_state()
-        attempts = 0
-        for _ in range(max_attempts):
-            if self._stop_requested:
-                break
-            attempts += 1
-            self._move_box_to_count("left", state.left, target_a)
-            self._move_box_to_count("right", state.right, target_b)
-            state = self.vision.get_state()
-            if state.left == target_a and state.right == target_b:
-                break
-        return state.left, state.right, attempts
-
-    def _move_box_to_count(self, box: str, current: int, target: int) -> None:
-        if target > current:
-            for _ in range(target - current):
-                if self._stop_requested:
-                    return
-                self.robot.place_to(box)
-        elif target < current:
-            for _ in range(current - target):
-                if self._stop_requested:
-                    return
-                self.robot.return_from(box)
+            self.on_round_ready(self.round_number, planned)
+        return planned, failed
 
     def _wait_for_answer(self) -> int:
         self._set_state(GameState.WAIT_FOR_ANSWER)
@@ -223,7 +210,7 @@ class GameEngine:
         problem: Problem,
         given: int,
         correct: bool,
-        setup_retries: int,
+        failed_placements: int,
         setup_seconds: float,
         answer_seconds: float,
     ) -> None:
@@ -238,20 +225,33 @@ class GameEngine:
                     given_answer=given,
                     correct=correct,
                     planned_problem=planned,
-                    setup_retries=setup_retries,
+                    setup_retries=0,
                     setup_seconds=setup_seconds,
                     answer_seconds=answer_seconds,
+                    failed_placements=failed_placements,
                 )
             )
         self._interruptible_sleep(self.config["feedback_seconds"])
 
-    def _round_reset(self) -> None:
+    def _round_reset(self, wait_for_helper: bool = True) -> None:
         self._set_state(GameState.ROUND_RESET)
         self._status("Please clear the mat")
         self._skip_requested = False
         while not self._stop_requested:
             state = self.vision.get_state()
             if (state.bars == 0 and not state.hand_on_mat) or self._skip_requested:
+                break
+            time.sleep(POLL_INTERVAL_SECONDS)
+        if not wait_for_helper:
+            return  # last round: go straight to the end screen; the helper resets there
+
+        # The robot has no return skill, so a helper puts the shapes back on their spots.
+        self._status("Helper: put the shapes back on their spots, then press Enter")
+        self._skip_requested = False
+        self._boxes_ready_requested = False
+        while not self._stop_requested:
+            if self._boxes_ready_requested or self._skip_requested:
+                self._boxes_ready_requested = False
                 self._skip_requested = False
                 return
             time.sleep(POLL_INTERVAL_SECONDS)

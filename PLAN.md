@@ -60,8 +60,8 @@ Mark the answer only when **all** of these hold:
 
 Then evaluate and show feedback. Before the next round starts, wait until the mat is clear (bar count = 0 and no hand) — or allow a facilitator key to skip.
 
-### Ground truth rule (important for robustness)
-After the robot finishes placing, **re-count the pieces in each box with the overhead camera**. The expected answer is computed from what is **actually** in the boxes, not what the robot was asked to do. If the counts don't match the plan, first let the robot retry (add/remove a piece); if it still fails, accept the real counts and update the displayed sum.
+### The sum comes from the robot commands (updated 2026-09-23)
+The sum shown is what the game **commanded**: how many times it called `place_left` / `place_right`, plus the chosen operator. The boxes are **not** re-counted, so a dropped or misplaced piece never changes the expected answer. Failed placements are only logged as a robot-reliability metric. The overhead camera is used only on the answer mat (bar count + hand detection). Between rounds a helper puts the shapes back on their margin spots and presses **Enter**.
 
 ---
 

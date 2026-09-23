@@ -40,6 +40,11 @@ class MockVision:
         self.margin += 1
         return True
 
+    def reset_boxes(self) -> None:
+        """Helper puts every placed shape back on the margin (Enter between rounds)."""
+        self.margin += self.left + self.right
+        self.left = self.right = 0
+
     # --- called by the GUI (keyboard-driven learner side) -------------------
     def set_bars(self, count: int) -> None:
         self.bars = max(0, count)

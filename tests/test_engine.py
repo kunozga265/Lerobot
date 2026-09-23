@@ -1,3 +1,5 @@
+import threading
+
 from app.game.engine import AnswerWatcher, GameEngine
 from app.game.problems import Problem
 from app.robot.mock_ctrl import MockRobotController
@@ -102,22 +104,52 @@ def test_hand_seen_again_after_clearing_requires_full_clear_wait_again():
     assert watcher.update(bars=4, hand_on_mat=False) is False  # must wait hand_clear_seconds again
 
 
-def test_round_setup_falls_back_to_ground_truth_when_margin_runs_out():
-    # PLAN.md's "ground truth" rule: if the robot can't place the planned amount even
-    # after retries, the round proceeds with what's actually in the boxes, not the plan.
-    engine = make_engine(margin_pieces=3)
+class RecordingRobot:
+    def __init__(self, succeed: bool = True):
+        self.succeed = succeed
+        self.calls: list[str] = []
 
-    problem, retries = engine._round_setup(Problem(a=5, b=5, operation="+"))
+    def place_to(self, box):
+        self.calls.append(box)
+        return self.succeed
 
-    assert (problem.a, problem.b) == (3, 0)  # only 3 pieces were ever available, all went left
-    assert problem.answer == 3
-    assert retries == 2  # 3 total attempts, first one doesn't count as a "retry"
+    def return_from(self, box):
+        raise AssertionError("the game must not call return_from: boxes are reset by a helper")
+
+    def go_home(self):
+        pass
 
 
-def test_round_setup_zero_retries_when_pieces_available():
-    engine = make_engine(margin_pieces=15)
+def test_round_setup_places_planned_counts_on_each_side():
+    robot = RecordingRobot()
+    engine = GameEngine(robot, MockVision(), ENGINE_CONFIG)
 
-    problem, retries = engine._round_setup(Problem(a=3, b=2, operation="+"))
+    problem, failed = engine._round_setup(Problem(a=2, b=1, operation="+"))
 
-    assert (problem.a, problem.b) == (3, 2)
-    assert retries == 0
+    assert robot.calls == ["left", "left", "right"]
+    assert problem == Problem(a=2, b=1, operation="+")
+    assert failed == 0
+
+
+def test_round_setup_keeps_planned_sum_when_robot_fails():
+    # The displayed sum is what was commanded, never a recount of the boxes.
+    robot = RecordingRobot(succeed=False)
+    engine = GameEngine(robot, MockVision(), ENGINE_CONFIG)
+
+    problem, failed = engine._round_setup(Problem(a=2, b=2, operation="*"))
+
+    assert problem == Problem(a=2, b=2, operation="*")
+    assert problem.answer == 4
+    assert failed == 4
+
+
+def test_round_reset_waits_for_helper_enter():
+    engine = make_engine(margin_pieces=15)  # mock mat is already clear (0 bars, no hand)
+    finished = threading.Event()
+    worker = threading.Thread(target=lambda: (engine._round_reset(), finished.set()))
+    worker.start()
+
+    assert not finished.wait(0.3)  # still waiting for the helper
+    engine.request_boxes_ready()
+    assert finished.wait(1.0)
+    worker.join()

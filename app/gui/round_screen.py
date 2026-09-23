@@ -112,6 +112,10 @@ class RoundScreen(QWidget):
             self.engine.request_skip_round()
         elif text.lower() == "r":
             self.engine.request_go_home()
+        elif key in (Qt.Key_Return, Qt.Key_Enter):
+            if self.vision is not None:
+                self.vision.reset_boxes()
+            self.engine.request_boxes_ready()
         elif text.lower() == "h" and self.vision is not None:
             self._hand_on_mat = not self._hand_on_mat
             self.vision.set_hand_on_mat(self._hand_on_mat)
@@ -127,5 +131,5 @@ class RoundScreen(QWidget):
         hand = "hand ON mat" if self._hand_on_mat else "hand clear"
         self.mock_panel.setText(
             f"[dev] bars={self._bars} ({hand}) — 0–9 set bars, H toggle hand, "
-            "Space force-submit, N skip round, R robot home, Esc stop"
+            "Space force-submit, N skip round, R robot home, Enter shapes reset, Esc stop"
         )

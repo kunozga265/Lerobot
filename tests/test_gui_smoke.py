@@ -81,7 +81,11 @@ def test_full_game_playable_headless(qapp, tmp_path):
 
     total_rounds = TEST_CONFIG["game"]["rounds_per_game"]
     for round_number in range(1, total_rounds + 1):
-        assert _wait_until(lambda: round_number in ready_rounds), f"round {round_number} never became ready"
+        # Between rounds the engine waits for the helper's Enter (shapes back on their spots);
+        # re-issue it every poll tick for the same reset-race reason as force-submit below.
+        assert _wait_until(lambda: _confirm_boxes_and_check(window, round_number, ready_rounds)), (
+            f"round {round_number} never became ready"
+        )
 
         # `_wait_for_answer` resets `_force_submit_requested = False` when it starts, right
         # after `_round_setup` (which is what fires `round_ready`) returns. A single
@@ -137,6 +141,10 @@ def test_round_screen_hotkeys(qapp):
     QTest.keyClick(screen, Qt.Key_7)
     assert vision.bars == 7
 
+    QTest.keyClick(screen, Qt.Key_Return)
+    assert engine.boxes_ready_calls == 1
+    assert vision.boxes_reset is True
+
     QTest.keyClick(screen, Qt.Key_Escape)
     assert engine.stop_calls == 1
 
@@ -149,6 +157,7 @@ class _FakeEngine:
         self.skip_calls = 0
         self.stop_calls = 0
         self.go_home_calls = 0
+        self.boxes_ready_calls = 0
 
     def request_force_submit(self):
         self.force_submit_calls += 1
@@ -162,6 +171,9 @@ class _FakeEngine:
     def request_go_home(self):
         self.go_home_calls += 1
 
+    def request_boxes_ready(self):
+        self.boxes_ready_calls += 1
+
 
 class _FakeVision:
     def __init__(self):
@@ -174,6 +186,9 @@ class _FakeVision:
     def set_hand_on_mat(self, on_mat):
         self.hand_on_mat = on_mat
 
+    def reset_boxes(self):
+        self.boxes_reset = True
+
 
 def _resubmit_and_check(window: MainWindow, round_number: int, round_results: list) -> bool:
     if len(round_results) == round_number:
@@ -181,6 +196,13 @@ def _resubmit_and_check(window: MainWindow, round_number: int, round_results: li
     window.thread.engine.request_force_submit()
     return False
 
+
+
+def _confirm_boxes_and_check(window, round_number, ready_rounds) -> bool:
+    if round_number in ready_rounds:
+        return True
+    window.thread.engine.request_boxes_ready()
+    return False
 
 def _find_button(widget, text: str) -> QPushButton:
     for button in widget.findChildren(QPushButton):
