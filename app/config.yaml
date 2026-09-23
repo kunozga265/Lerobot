@@ -24,9 +24,22 @@ robot:
   home_pose: null
 
 cameras:
-  overhead: null
-  wrist: null
+  overhead: 1  # CAMERA_EXTERNAL - fixed, sees the whole board (confirmed via lerobot-find-cameras)
+  wrist: 0     # CAMERA_GRIPPER - mounted on the gripper
 
 vision:
-  homography: null
-  rois: { left_box: null, right_box: null, margin: null, mat: null }
+  board_width: 1060
+  board_height: 700
+  homography:
+  - [0.050344, -1.113069, 1022.851141]
+  - [-1.868273, -0.006051, 1642.341935]
+  - [3.3e-05, -4.9e-05, 1.0]
+  rois:
+    left_box: [215, 165, 485, 535]
+    right_box: [575, 165, 845, 535]
+    margin: [0, 0, 1060, 700]
+    mat_camera_px:
+    - [1170, 89]
+    - [1752, 86]
+    - [1746, 840]
+    - [1181, 850]
