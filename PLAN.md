@@ -136,10 +136,14 @@ Each skill call moves **one** piece and ends with the arm back at a fixed **home
 
 `RobotController.place_to("left")` = run the skill policy until (a) the overhead count for that box increases by 1 **and** the arm is near home, or (b) timeout (e.g. 25 s). Then verify, retry if needed.
 
-### Policy options (decide in Phase 4 — try A first)
-- **A. ACT, one model per skill** (3–4 small models). Most reliable with limited data. Load all at startup; switch model per call.
-- **B. SmolVLA, one language-conditioned model** with the instructions above as task strings. Neater, but needs more data and is heavier to run on a Mac.
-- **Fallback C (if learning isn't reliable by demo time):** scripted pick-and-place using overhead-camera piece positions → table coordinates (homography) → inverse kinematics from the SO-101 URDF, fixed top-down grasp. Keep the `RobotController` interface identical so the game doesn't care.
+### Policy decision: ACT, scoped to 2 required skills (hackathon, 1-day build)
+Decided (2026-09-23) — this is a hackathon build with ~1 day and a requirement to demonstrate an actual trained/learned policy, not scripted motion.
+
+- **Model: ACT, one small model per skill** (~80M params). Not SmolVLA: a documented SO-101 pick-place run needed 75 tightly-constrained episodes to succeed after 50 episodes over a wider workspace failed outright, and SmolVLA training alone runs ~4h (A100) to ~10h (RTX 3090) per skill — too slow and too data-sensitive for a single day. ACT trains in ~30–90 min on a cloud GPU (~8–12h on CPU) and is reliable with ~50 episodes, so a bad first run can still be diagnosed and retrained same-day. Load all trained models at startup; switch model per call.
+- **Required today: `place_left`, `place_right`.** This is the core "watch the robot set up the sum" moment and runs every round — train and eval these first.
+- **Stretch (not required for Day 1): `return_left`, `return_right`.** These only exist for the delta-based reset optimisation below; if they don't get trained today, fall back to a manual/scripted box reset between rounds for the demo. This doesn't weaken the "learned policy" story since the headline skills the audience watches are still ACT-trained.
+- No pretrained checkpoint is reused for the arm policy itself — pick-and-place policies are scene/embodiment-specific and nothing on the Hub fits this custom rig (tape boxes, specific pieces, camera pose). `lerobot/svla_so101_pickplace` is a useful reference for config/camera setup only, not usable weights.
+- **Fallback (if `place_left`/`place_right` aren't reliable by demo time):** scripted pick-and-place using overhead-camera piece positions → table coordinates (homography) → inverse kinematics from the SO-101 URDF, fixed top-down grasp. Keep the `RobotController` interface identical so the game doesn't care.
 
 ### Data collection rules (teleoperating with the leader arm)
 - Consistent strategy for which piece to pick: **always pick the margin piece closest to the target box** (for returns: the piece nearest the margin). Consistent choices = much easier for ACT to learn.
@@ -229,10 +233,11 @@ Start with classical CV (fast, no training):
 - **Accept:** ≥ 95% count accuracy on eval set; answer submission triggers correctly with a real hand; full game playable with a human acting as the robot.
 
 ### Phase 4 — Robot skills (parallel with Phase 3)
-- Calibrate arms, verify teleoperation, record datasets for `place_left`, `place_right`, `return_left`, `return_right`.
+- Calibrate arms, verify teleoperation, record datasets for `place_left`, `place_right` (required), `return_left`, `return_right` (stretch — see §4).
 - Train ACT per skill; evaluate each: 20 trials, record success rate.
 - `LeRobotController` running policies in a worker thread with timeout, home-pose check, and overhead-count verification + retry.
-- **Accept:** ≥ 80% single-attempt success per skill, ≥ 95% with one retry.
+- **Required accept:** `place_left` and `place_right` each ≥ 80% single-attempt success, ≥ 95% with one retry.
+- **Stretch accept:** `return_left` and `return_right` each at the same bar. If not met by end of day, use a manual/scripted box reset between rounds for the demo instead (§4 fallback).
 
 ### Phase 5 — Integration
 - Real robot + real vision in the game; delta-based reset between rounds; facilitator hotkeys; emergency stop.
@@ -259,3 +264,4 @@ Start with classical CV (fast, no training):
 3. "Exit" on the end screen returns to the Start page; the Start page has Quit to close the app.
 4. Who clears the answer bars between rounds? Assumed the child, prompted by the GUI.
 5. Zero as an answer (e.g. 3 − 3) is excluded for now, since an empty mat can't be "submitted".
+6. (2026-09-23) This is a 1-day hackathon build requiring a demonstrated learned policy. Locked robot-model decision: ACT, scoped to `place_left`/`place_right` as required and `return_left`/`return_right` as stretch (see §4). Confirmed available: cloud GPU on standby for training plus a Mac for dev/inference, and the physical rig (arms + cameras) already assembled and ready to record data.
