@@ -27,26 +27,28 @@ class Problem:
         return f"{self.a} {self.operation} {self.b} = ?"
 
 
-def _generate_add(margin_pieces: int, rng: random.Random) -> Problem:
+def _generate_add(margin_pieces: int, max_per_box: int, rng: random.Random) -> Problem:
     while True:
-        a = rng.randint(1, 5)
-        b = rng.randint(1, 5)
+        a = rng.randint(1, min(5, max_per_box))
+        b = rng.randint(1, min(5, max_per_box))
         if a + b <= 10 and a + b <= margin_pieces:
             return Problem(a, b, "+")
 
 
-def _generate_subtract(margin_pieces: int, rng: random.Random) -> Problem:
+def _generate_subtract(margin_pieces: int, max_per_box: int, rng: random.Random) -> Problem:
+    if max_per_box < 2:
+        raise ValueError("subtraction needs at least 2 pieces per box")
     while True:
-        a = rng.randint(2, 6)
+        a = rng.randint(2, min(6, max_per_box))
         b = rng.randint(1, a - 1)
         if a <= margin_pieces:
             return Problem(a, b, "-")
 
 
-def _generate_multiply(margin_pieces: int, rng: random.Random) -> Problem:
+def _generate_multiply(margin_pieces: int, max_per_box: int, rng: random.Random) -> Problem:
     while True:
-        a = rng.randint(1, 3)
-        b = rng.randint(1, 3)
+        a = rng.randint(1, min(3, max_per_box))
+        b = rng.randint(1, min(3, max_per_box))
         if a * b <= 10 and a + b <= margin_pieces:
             return Problem(a, b, "*")
 
@@ -55,11 +57,19 @@ _GENERATORS = {"+": _generate_add, "-": _generate_subtract, "*": _generate_multi
 
 
 def generate_problem(
-    operation: Operation, margin_pieces: int = 15, rng: random.Random | None = None
+    operation: Operation,
+    margin_pieces: int = 15,
+    rng: random.Random | None = None,
+    max_per_box: int | None = None,
 ) -> Problem:
-    """Generate a single problem for `operation` honouring PLAN.md §2 constraints."""
+    """Generate a single problem for `operation` honouring PLAN.md §2 constraints.
+
+    `max_per_box` caps each operand at the number of pieces the robot can place in one box
+    (e.g. 2 when each side of the margin only holds 2 shapes); None means no extra cap.
+    """
     rng = rng or random.Random()
-    return _GENERATORS[operation](margin_pieces, rng)
+    cap = max_per_box if max_per_box is not None else margin_pieces
+    return _GENERATORS[operation](margin_pieces, cap, rng)
 
 
 def generate_round_operations(
@@ -89,10 +99,11 @@ def generate_game(
     mix: dict[Operation, int] | None = None,
     margin_pieces: int = 15,
     rng: random.Random | None = None,
+    max_per_box: int | None = None,
 ) -> list[Problem]:
     """Generate a full game's worth of problems, balanced per `mix`."""
     rng = rng or random.Random()
     return [
-        generate_problem(op, margin_pieces, rng)
+        generate_problem(op, margin_pieces, rng, max_per_box)
         for op in generate_round_operations(rounds, mix, rng)
     ]

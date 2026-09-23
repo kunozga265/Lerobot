@@ -129,6 +129,7 @@ class GameEngine:
             rounds=self.config["rounds_per_game"],
             mix=self.config["operation_mix"],
             rng=self.rng,
+            max_per_box=self.config.get("max_pieces_per_box"),
         )
 
         for planned in problems:

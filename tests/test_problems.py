@@ -31,6 +31,22 @@ def test_generate_problem_respects_margin_cap():
         assert problem.a + problem.b <= 4
 
 
+
+@pytest.mark.parametrize("operation", OPERATIONS)
+def test_generate_problem_respects_max_per_box(operation):
+    rng = random.Random(5)
+    for _ in range(200):
+        problem = generate_problem(operation, rng=rng, max_per_box=2)
+        assert 1 <= problem.a <= 2 and 1 <= problem.b <= 2
+        assert problem.answer >= 1
+
+
+def test_generate_game_respects_max_per_box():
+    rng = random.Random(6)
+    game = generate_game(rounds=10, mix={"+": 5, "-": 2, "*": 3}, rng=rng, max_per_box=2)
+    assert len(game) == 10
+    assert all(p.a <= 2 and p.b <= 2 for p in game)
+
 def test_generate_round_operations_balanced_and_shuffled():
     rng = random.Random(2)
     operations = generate_round_operations(rounds=10, rng=rng)
