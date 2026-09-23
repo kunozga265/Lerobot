@@ -1,4 +1,22 @@
-from app.game.engine import AnswerWatcher
+from app.game.engine import AnswerWatcher, GameEngine
+from app.game.problems import Problem
+from app.robot.mock_ctrl import MockRobotController
+from app.vision.mock_vision import MockVision
+
+ENGINE_CONFIG = {
+    "rounds_per_game": 10,
+    "operation_mix": {"+": 4, "-": 3, "*": 3},
+    "max_answer": 10,
+    "hand_clear_seconds": 2.0,
+    "count_stable_seconds": 1.5,
+    "feedback_seconds": 3.5,
+}
+
+
+def make_engine(margin_pieces: int) -> GameEngine:
+    vision = MockVision(margin_pieces=margin_pieces)
+    robot = MockRobotController(vision, seconds_per_piece=0.0)
+    return GameEngine(robot, vision, ENGINE_CONFIG)
 
 
 class FakeClock:
@@ -82,3 +100,24 @@ def test_hand_seen_again_after_clearing_requires_full_clear_wait_again():
     watcher.update(bars=4, hand_on_mat=False)  # would submit next sample
     watcher.update(bars=4, hand_on_mat=True)  # hand returns to mat
     assert watcher.update(bars=4, hand_on_mat=False) is False  # must wait hand_clear_seconds again
+
+
+def test_round_setup_falls_back_to_ground_truth_when_margin_runs_out():
+    # PLAN.md's "ground truth" rule: if the robot can't place the planned amount even
+    # after retries, the round proceeds with what's actually in the boxes, not the plan.
+    engine = make_engine(margin_pieces=3)
+
+    problem, retries = engine._round_setup(Problem(a=5, b=5, operation="+"))
+
+    assert (problem.a, problem.b) == (3, 0)  # only 3 pieces were ever available, all went left
+    assert problem.answer == 3
+    assert retries == 2  # 3 total attempts, first one doesn't count as a "retry"
+
+
+def test_round_setup_zero_retries_when_pieces_available():
+    engine = make_engine(margin_pieces=15)
+
+    problem, retries = engine._round_setup(Problem(a=3, b=2, operation="+"))
+
+    assert (problem.a, problem.b) == (3, 2)
+    assert retries == 0

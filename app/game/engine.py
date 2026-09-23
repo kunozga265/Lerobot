@@ -28,9 +28,13 @@ class GameState(Enum):
 @dataclass
 class RoundResult:
     round_number: int
-    problem: Problem
+    problem: Problem  # verified/ground-truth problem (may differ from planned_problem)
     given_answer: int
     correct: bool
+    planned_problem: Problem
+    setup_retries: int
+    setup_seconds: float
+    answer_seconds: float
 
 
 class AnswerWatcher:
@@ -131,38 +135,47 @@ class GameEngine:
             if self._stop_requested:
                 return
             self.round_number += 1
-            problem = self._round_setup(planned)
+
+            setup_start = time.monotonic()
+            problem, setup_retries = self._round_setup(planned)
+            setup_seconds = time.monotonic() - setup_start
             if self._stop_requested:
                 return
+
+            answer_start = time.monotonic()
             given = self._wait_for_answer()
+            answer_seconds = time.monotonic() - answer_start
             if self._stop_requested:
                 return
+
             correct = self._evaluate(problem, given)
-            self._feedback(problem, given, correct)
+            self._feedback(planned, problem, given, correct, setup_retries, setup_seconds, answer_seconds)
             self._round_reset()
 
         self._set_state(GameState.END_SCREEN)
 
-    def _round_setup(self, planned: Problem) -> Problem:
+    def _round_setup(self, planned: Problem) -> tuple[Problem, int]:
         self._set_state(GameState.ROUND_SETUP)
         self._status("Watch the robot…")
-        actual_a, actual_b = self._setup_boxes(planned.a, planned.b)
+        actual_a, actual_b, attempts = self._setup_boxes(planned.a, planned.b)
         problem = Problem(actual_a, actual_b, planned.operation)
         if self.on_round_ready:
             self.on_round_ready(self.round_number, problem)
-        return problem
+        return problem, max(0, attempts - 1)  # attempts=1 means it succeeded first try, i.e. 0 retries
 
-    def _setup_boxes(self, target_a: int, target_b: int, max_attempts: int = 3) -> tuple[int, int]:
+    def _setup_boxes(self, target_a: int, target_b: int, max_attempts: int = 3) -> tuple[int, int, int]:
         state = self.vision.get_state()
+        attempts = 0
         for _ in range(max_attempts):
             if self._stop_requested:
                 break
+            attempts += 1
             self._move_box_to_count("left", state.left, target_a)
             self._move_box_to_count("right", state.right, target_b)
             state = self.vision.get_state()
             if state.left == target_a and state.right == target_b:
                 break
-        return state.left, state.right
+        return state.left, state.right, attempts
 
     def _move_box_to_count(self, box: str, current: int, target: int) -> None:
         if target > current:
@@ -203,12 +216,32 @@ class GameEngine:
                 self.on_score_changed(self.score)
         return correct
 
-    def _feedback(self, problem: Problem, given: int, correct: bool) -> None:
+    def _feedback(
+        self,
+        planned: Problem,
+        problem: Problem,
+        given: int,
+        correct: bool,
+        setup_retries: int,
+        setup_seconds: float,
+        answer_seconds: float,
+    ) -> None:
         self._set_state(GameState.FEEDBACK)
         message = "Well done! ✓" if correct else f"Not quite — the answer was {problem.answer}"
         self._status(message)
         if self.on_round_result:
-            self.on_round_result(RoundResult(self.round_number, problem, given, correct))
+            self.on_round_result(
+                RoundResult(
+                    round_number=self.round_number,
+                    problem=problem,
+                    given_answer=given,
+                    correct=correct,
+                    planned_problem=planned,
+                    setup_retries=setup_retries,
+                    setup_seconds=setup_seconds,
+                    answer_seconds=answer_seconds,
+                )
+            )
         self._interruptible_sleep(self.config["feedback_seconds"])
 
     def _round_reset(self) -> None:

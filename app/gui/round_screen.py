@@ -41,6 +41,14 @@ class RoundScreen(QWidget):
         self.status_label.setStyleSheet("font-size: 26px; color: #2aa66c;")
         layout.addWidget(self.status_label)
 
+        # PLAN.md §6: "show the counted bars... and the correct answer with dots/blocks
+        # so the child can see the difference."
+        self.feedback_label = QLabel("")
+        self.feedback_label.setAlignment(Qt.AlignCenter)
+        self.feedback_label.setWordWrap(True)
+        self.feedback_label.setStyleSheet("font-size: 22px;")
+        layout.addWidget(self.feedback_label)
+
         self.mock_panel = QLabel("")
         self.mock_panel.setAlignment(Qt.AlignCenter)
         self.mock_panel.setWordWrap(True)
@@ -62,16 +70,31 @@ class RoundScreen(QWidget):
         self.score_label.setText("Score: 0")
         self.problem_label.setText("Get ready…")
         self.status_label.setText("")
+        self.feedback_label.setText("")
 
     def set_problem(self, round_number: int, problem) -> None:
         self.round_label.setText(f"Round {round_number} / {self.rounds_total}")
         self.problem_label.setText(str(problem))
+        self.feedback_label.setText("")  # clear the previous round's dots/blocks
 
     def set_status(self, message: str) -> None:
         self.status_label.setText(message)
 
     def set_score(self, score: int) -> None:
         self.score_label.setText(f"Score: {score}")
+
+    def set_result(self, result) -> None:
+        given_dots = "●" * result.given_answer
+        if result.correct:
+            self.feedback_label.setStyleSheet("font-size: 22px; color: #2aa66c;")
+            self.feedback_label.setText(f"You put {result.given_answer}  {given_dots}")
+        else:
+            answer_dots = "●" * result.problem.answer
+            self.feedback_label.setStyleSheet("font-size: 22px; color: #c0392b;")
+            self.feedback_label.setText(
+                f"You put {result.given_answer}  {given_dots}\n"
+                f"Answer is {result.problem.answer}  {answer_dots}"
+            )
 
     def keyPressEvent(self, event) -> None:
         key = event.key()

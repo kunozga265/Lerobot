@@ -13,6 +13,10 @@ game:
 mock:
   robot_seconds_per_piece: 1.0
 
+gui:
+  tts_enabled: true
+  sound_enabled: true
+
 robot:
   type: so101
   follower_port: null

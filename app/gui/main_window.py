@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import QMainWindow, QStackedWidget
 
 from app.game.engine import GameEngine, GameState
+from app.game.logger import RoundLogger
+from app.gui.audio_feedback import AudioFeedback
 from app.gui.end_screen import EndScreen
 from app.gui.engine_thread import EngineThread
 from app.gui.round_screen import RoundScreen
@@ -33,8 +36,24 @@ class MainWindow(QMainWindow):
         self.end_screen.play_again_clicked.connect(self.start_new_game)
         self.end_screen.exit_clicked.connect(self.show_start_screen)
 
+        gui_config = config.get("gui", {})
+        self.round_logger = RoundLogger()
+        self.audio = AudioFeedback(
+            tts_enabled=gui_config.get("tts_enabled", True),
+            sound_enabled=gui_config.get("sound_enabled", True),
+        )
+
+        self._fullscreen_shortcut = QShortcut(QKeySequence("F11"), self)
+        self._fullscreen_shortcut.activated.connect(self._toggle_fullscreen)
+
         self.thread: EngineThread | None = None
         self.stack.setCurrentWidget(self.start_screen)
+
+    def _toggle_fullscreen(self) -> None:
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
 
     def show_start_screen(self) -> None:
         self._stop_current_game()
@@ -57,6 +76,10 @@ class MainWindow(QMainWindow):
         self.thread.status_message.connect(self.round_screen.set_status)
         self.thread.score_changed.connect(self.round_screen.set_score)
         self.thread.round_ready.connect(self.round_screen.set_problem)
+        self.thread.round_ready.connect(self.audio.on_round_ready)
+        self.thread.round_result.connect(self.round_screen.set_result)
+        self.thread.round_result.connect(self.round_logger.log_round)
+        self.thread.round_result.connect(self.audio.on_round_result)
         self.thread.finished.connect(self._on_game_finished)
 
         self.stack.setCurrentWidget(self.round_screen)

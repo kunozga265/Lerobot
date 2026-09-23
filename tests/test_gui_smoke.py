@@ -38,6 +38,10 @@ TEST_CONFIG = {
         "feedback_seconds": 0.05,
     },
     "mock": {"robot_seconds_per_piece": 0.01},
+    # Audio disabled: the smoke test drives 10 real rounds and shouldn't spawn real
+    # `say`/`afplay` subprocesses each time (see app/gui/audio_feedback.py's own
+    # mocked-subprocess tests for that behaviour in isolation).
+    "gui": {"tts_enabled": False, "sound_enabled": False},
 }
 
 
@@ -58,8 +62,9 @@ def _wait_until(condition, timeout_s: float = 5.0) -> bool:
     return condition()
 
 
-def test_full_game_playable_headless(qapp):
+def test_full_game_playable_headless(qapp, tmp_path):
     window = MainWindow(TEST_CONFIG)
+    window.round_logger.path = tmp_path / "games.csv"  # keep the real logs/games.csv untouched
     window.show()
     window.activateWindow()
     QTest.qWaitForWindowExposed(window)
@@ -93,6 +98,11 @@ def test_full_game_playable_headless(qapp):
 
     expected_score = sum(1 for r in round_results if r.correct)
     assert f"{expected_score} / {total_rounds}" == window.end_screen.score_label.text()
+
+    assert window.round_logger.path.exists()
+    with window.round_logger.path.open() as f:
+        logged_rows = f.read().count("\n") - 1  # header + one line per round
+    assert logged_rows == total_rounds
 
     window._stop_current_game()
     window.close()
