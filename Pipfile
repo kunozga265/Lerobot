@@ -4,8 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+pyside6 = "*"
+pyyaml = "*"
 
 [dev-packages]
+pytest = "*"
 
 [requires]
 python_version = "3.14"

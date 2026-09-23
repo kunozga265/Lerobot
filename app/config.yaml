@@ -1,0 +1,28 @@
+# Robot Maths Tutor config.
+# Phase 1: only `game` and `mock` sections are used (mock robot/vision, no hardware).
+# Phase 2+: `cameras`, `robot`, and calibration-derived ROIs get filled in.
+
+game:
+  rounds_per_game: 10
+  operation_mix: { "+": 4, "-": 3, "*": 3 }
+  max_answer: 10
+  hand_clear_seconds: 2.0
+  count_stable_seconds: 1.5
+  feedback_seconds: 3.5
+
+mock:
+  robot_seconds_per_piece: 1.0
+
+robot:
+  type: so101
+  follower_port: null
+  leader_port: null
+  home_pose: null
+
+cameras:
+  overhead: null
+  wrist: null
+
+vision:
+  homography: null
+  rois: { left_box: null, right_box: null, margin: null, mat: null }
