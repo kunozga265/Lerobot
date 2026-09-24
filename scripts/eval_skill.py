@@ -1,4 +1,4 @@
-"""INTEGRATION_PLAN.md step 2: trial a trained skill on the real arm through the *game's*
+u"""INTEGRATION_PLAN.md step 2: trial a trained skill on the real arm through the *game's*
 controller (LeRobotController + CameraManager), so the result also covers the camera
 resize/colour path the game uses (step 6), not just lerobot's own rollout.
 
