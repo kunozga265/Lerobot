@@ -188,7 +188,7 @@ class GameEngine:
 
     def _wait_for_answer(self) -> int:
         self._set_state(GameState.WAIT_FOR_ANSWER)
-        self._status("Count the shapes and put your answer on the black mat!")
+        self._status("Count the shapes and put your answer bars on the black mat, with small gaps!")
         watcher = AnswerWatcher(self.config["hand_clear_seconds"], self.config["count_stable_seconds"])
         self._force_submit_requested = False
         self._skip_requested = False

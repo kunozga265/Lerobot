@@ -4,7 +4,7 @@ Written 2026-09-24. Tick items off as they're done.
 
 ## Where we are
 - **Game logic is done.**
-  - 5 rounds per game (2 add, 1 subtract, 2 multiply) and at most 2 pieces per box.
+  - 3 rounds per game, 1 piece per box (every problem is "1 op 1", one of `+ - * /`) - a temporary demo simplification while only single-piece placement is reliable; raise `max_pieces_per_box` back up once the second-piece skill is solid.
   - The sum comes from the robot commands: `a` × `place_left` and `b` × `place_right`, plus the operator. The boxes are never recounted.
   - Between rounds a helper puts the shapes back and presses **Enter**.
 - **ACT models** for `place_left` / `place_right` are training.
@@ -31,11 +31,15 @@ Loading a trained policy runs `draccus.parse`, which crashes on Python 3.14. Tha
 - [x] `training/README.md` has the exact record, train and eval commands. Fill in the dataset names and success rates as they come in.
 
 ### 3. Answer-mat vision (Phase 3; can run alongside step 2)
-- [ ] `scripts/capture_samples.py`: saves labelled overhead frames to `data/vision_eval/` (0–4 bars, touching and apart, hands on and off the mat).
-- [ ] `app/vision/counter.py`: counts bars inside the calibrated `mat_camera_px` polygon using an HSV mask, contours, and splitting touching bars by width.
-- [ ] `app/vision/hands.py`: MediaPipe Hands inside the mat polygon, with change detection as the backup.
-- [ ] `app/vision/live_vision.py`: `LiveVision(cameras, config)` with `start()`, `stop()` and `get_state() -> BoardState` (same as `MockVision`). `app/hardware.py` already builds it when `vision.mode: live`, passing the shared `CameraManager`. Runs about 10 fps on a thread and takes the most common count over the last second.
-- [ ] `scripts/test_counter.py` (live overlay) and `scripts/eval_counter.py` (accuracy report). Target: at least 95% on bars and on hands.
+Code is done; the thresholds still need tuning on the rig with real photos.
+- [ ] **First, recalibrate the mat.** `cameras` is now 640×480 but `vision.rois.mat_camera_px` is still in 1080p pixels (x up to 1752), so live vision refuses to start. Run `pipenv run python scripts/calibrate_board.py` on the rig.
+- [x] `scripts/capture_samples.py`: live preview. Keys 0–4 set the bar label, h toggles hand, space saves to `data/vision_eval/` + `labels.csv` (`data/` is git-ignored).
+- [x] `app/vision/counter.py`: bars inside the mat polygon via an HSV mask (saturation and brightness), open/close cleanup, contours, and splitting touching bars by `bar_width_px`.
+- [x] `app/vision/hands.py`: no model needed. It's a hand if enough of the mat is skin-coloured (YCrCb range) or changed since the last frame. MediaPipe wasn't installed (network); add it behind `HandDetector.update` only if accuracy falls short.
+- [x] `app/vision/live_vision.py`: `LiveVision(cameras, config)`, 10 fps thread, the most common count over 1 s, same `get_state()` as `MockVision`. Checked end to end: a scripted camera placing 3 bars with a hand gets submitted as 3, about 1.2 s after the hand leaves.
+- [x] `scripts/test_counter.py` (live overlay, sliders, `p` prints the YAML) and `scripts/eval_counter.py` (accuracy report, lists failures).
+- [ ] On the rig: capture 100+ frames → tune with `test_counter.py` (lay one bar to read its width for `bar_width_px`) → paste the printed `vision.mat` / `vision.hands` into `config.yaml` → `eval_counter.py` until at least 95% for bars and hands.
+- [ ] Game test: `vision.mode: live`, `robot.mode: mock`; play with real bars and hands.
 
 ### 4. Choose mock or real parts from config
 - [x] `config.yaml`: `robot.mode: mock|lerobot`, `vision.mode: mock|live`, follower port and ID, policy paths, tasks and timings per box, and camera capture size.

@@ -25,39 +25,63 @@ Each side has 2 margin spots and 2 box spots. Mix two variants in one dataset:
 - **Variant B:** one piece already in → place the second.
 
 Always pick the spot closer to the box first, and swap which shape sits on which spot between episodes. Every episode starts and ends at home.
+
+**Add episodes to an existing dataset.** Pass the **same** `repo_id` with `--resume=true`. A new name starts a separate dataset, which is how the left data got split in two.
+- **`--dataset.root` is required** with `--resume=true` in lerobot 0.6.1. It's the dataset's local folder. Write `$HOME`, not `~`, after `=`.
+- **`--dataset.num_episodes`** is how many *more* episodes to add.
+- **If the folder isn't on this Mac,** download it first:
+  ```bash
+  hf download honestogarrido/place_right_20260923_182443 --repo-type dataset \
+    --local-dir ~/.cache/huggingface/lerobot/honestogarrido/place_right_20260923_182443
+  ```
 ```bash
 lerobot-record \
   --robot.type=so101_follower --robot.port=/dev/tty.usbmodem5B610367201 --robot.id=my_awesome_follower_arm \
   --robot.cameras="{overhead: {type: opencv, index_or_path: 1, width: 640, height: 480, fps: 30}, wrist: {type: opencv, index_or_path: 0, width: 640, height: 480, fps: 30}}" \
   --teleop.type=so101_leader --teleop.port=/dev/tty.usbmodem5B3D0426861 --teleop.id=my_awesome_leader_arm \
   --display_data=true \
-  --dataset.repo_id=honestogarrido/place_left_20260923_174813 \
-  --dataset.single_task="Pick a piece from the margin and place it in the left box" \
-  --dataset.num_episodes=50 --dataset.episode_time_s=15 --dataset.reset_time_s=10 \
-  --dataset.push_to_hub=true
+  --dataset.repo_id=honestogarrido/place_right_20260923_182443 \
+  --dataset.root=$HOME/.cache/huggingface/lerobot/honestogarrido/place_right_20260923_182443 \
+  --dataset.single_task="Pick a piece from the margin and place it in the right box" \
+  --dataset.num_episodes=20 --dataset.episode_time_s=15 --dataset.reset_time_s=10 \
+  --dataset.push_to_hub=true \
+  --resume=true
 ```
-- **`place_right`:** the same command with its own `repo_id` and the task `"Pick a piece from the margin and place it in the right box"`.
-- **Adding episodes:** add `--resume=true` to continue an existing dataset.
+**For `place_left`,** use `honestogarrido/place_left_merged` for both `repo_id` and `root`, with the task `"Pick a piece from the margin and place it in the left box"`.
+
+**Merge the two left datasets** (done once):
+```bash
+lerobot-edit-dataset \
+  --new_repo_id honestogarrido/place_left_merged \
+  --operation.type merge \
+  --operation.repo_ids "['honestogarrido/place_left_20260923_174813', 'honestogarrido/place_left_20260923_181638']" \
+  --push_to_hub true
+```
 
 | Skill | Dataset | Episodes |
 |---|---|---|
-| place_left | `honestogarrido/place_left_20260923_174813` | _fill in_ |
-| place_right | _fill in_ | _fill in_ |
+| place_left | `honestogarrido/place_left_merged` (= 174813 + 181638) | _fill in_ |
+| place_right | `honestogarrido/place_right_20260923_182443` | _fill in_ |
 
-## Train (cloud GPU)
+## Train (Hugging Face Jobs, cloud GPU)
+The job downloads the dataset from the Hub, so push new episodes first (`--dataset.push_to_hub=true` above).
+- **Each retrain:** use a new `--output_dir` / `--job_name` (`_v2`, `_v3`, …) and the same `--policy.repo_id`, so the game picks up the new model with no config change.
+- **Train from scratch every time.** `lerobot-train --resume=true` only continues an interrupted run.
+- **Checkpoints:** `--save_checkpoint_to_hub=true` uploads one every `save_freq` steps.
 ```bash
 lerobot-train \
-  --dataset.repo_id=honestogarrido/place_left_20260923_174813 \
+  --dataset.repo_id=honestogarrido/place_left_merged \
   --policy.type=act \
-  --policy.device=cuda \
   --policy.repo_id=honestogarrido/act_place_left \
-  --output_dir=outputs/train/act_place_left_20260923_174813 \
-  --job_name=act_place_left_20260923_174813 \
-  --wandb.enable=false
+  --output_dir=outputs/train/act_place_left_v2 \
+  --job_name=act_place_left_v2 \
+  --policy.device=cuda \
+  --steps=20000 --save_freq=5000 \
+  --save_checkpoint_to_hub=true \
+  --wandb.enable=false \
+  --job.target=a10g-small --job.timeout=4h
 ```
-- **Device:** use `--policy.device=cuda` on the cloud GPU. `mps` works on the Mac but is very slow for training.
-- **Name each model after its skill** (`act_place_left`, `act_place_right`). A shared name such as `my_policy` gets overwritten.
-- **Game config:** `app/config.yaml` → `robot.policies.left.path` / `right.path` must point at these `policy.repo_id`s.
+**`place_right`:** `--dataset.repo_id=honestogarrido/place_right_20260923_182443`, `--policy.repo_id=honestogarrido/act_place_right`, and `act_place_right_v2` for `--output_dir` / `--job_name`. Both jobs can run at once.
 
 ## Before evaluating
 1. Save the home pose. Torque turns off; move the follower to home by hand and press Enter:

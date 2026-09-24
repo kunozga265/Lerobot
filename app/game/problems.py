@@ -6,7 +6,7 @@ import random
 from dataclasses import dataclass
 from typing import Literal
 
-Operation = Literal["+", "-", "*"]
+Operation = Literal["+", "-", "*", "/"]
 
 
 @dataclass(frozen=True)
@@ -21,7 +21,9 @@ class Problem:
             return self.a + self.b
         if self.operation == "-":
             return self.a - self.b
-        return self.a * self.b
+        if self.operation == "*":
+            return self.a * self.b
+        return self.a // self.b  # exact: the generator only ever produces a b that divides a
 
     def __str__(self) -> str:
         return f"{self.a} {self.operation} {self.b} = ?"
@@ -36,8 +38,10 @@ def _generate_add(margin_pieces: int, max_per_box: int, rng: random.Random) -> P
 
 
 def _generate_subtract(margin_pieces: int, max_per_box: int, rng: random.Random) -> Problem:
+    if max_per_box == 1:
+        return Problem(1, 1, "-")  # only possible pair with one piece per box; answer is 0
     if max_per_box < 2:
-        raise ValueError("subtraction needs at least 2 pieces per box")
+        raise ValueError("subtraction needs at least 1 piece per box")
     while True:
         a = rng.randint(2, min(6, max_per_box))
         b = rng.randint(1, a - 1)
@@ -53,7 +57,21 @@ def _generate_multiply(margin_pieces: int, max_per_box: int, rng: random.Random)
             return Problem(a, b, "*")
 
 
-_GENERATORS = {"+": _generate_add, "-": _generate_subtract, "*": _generate_multiply}
+def _generate_divide(margin_pieces: int, max_per_box: int, rng: random.Random) -> Problem:
+    while True:
+        b = rng.randint(1, min(3, max_per_box))
+        quotient = rng.randint(1, min(3, max_per_box))
+        a = b * quotient
+        if a <= max_per_box and a + b <= margin_pieces:
+            return Problem(a, b, "/")
+
+
+_GENERATORS = {
+    "+": _generate_add,
+    "-": _generate_subtract,
+    "*": _generate_multiply,
+    "/": _generate_divide,
+}
 
 
 def generate_problem(
@@ -89,8 +107,11 @@ def generate_round_operations(
     while len(operations) < rounds:
         operations.append(keys[i % len(keys)])
         i += 1
-    operations = operations[:rounds]
+    # Shuffle before trimming: trimming first would deterministically drop whichever
+    # operator sorts last (by mix dict order) every time the mix has more entries than
+    # `rounds`, rather than a random one.
     rng.shuffle(operations)
+    operations = operations[:rounds]
     return operations
 
 

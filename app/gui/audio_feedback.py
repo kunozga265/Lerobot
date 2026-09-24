@@ -11,7 +11,7 @@ import subprocess
 from app.game.engine import RoundResult
 from app.game.problems import Problem
 
-_OPERATOR_WORDS = {"+": "plus", "-": "minus", "*": "times"}
+_OPERATOR_WORDS = {"+": "plus", "-": "minus", "*": "times", "/": "divided by"}
 
 # Gentle system sounds (PLAN.md §6: "never harsh for wrong answers").
 CORRECT_SOUND = "/System/Library/Sounds/Glass.aiff"

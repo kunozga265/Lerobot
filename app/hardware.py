@@ -51,7 +51,10 @@ def build_hardware(config: dict) -> Hardware:
                     "vision.mode is 'live' but live vision isn't built yet (INTEGRATION_PLAN.md step 3). "
                     "Set vision.mode: mock for now."
                 ) from e
-            hardware.vision = LiveVision(hardware.cameras, config)
+            try:
+                hardware.vision = LiveVision(hardware.cameras, config)
+            except ValueError as e:  # e.g. no mat calibration yet
+                raise HardwareError(str(e)) from e
             hardware.vision.start()
         if robot_mode(config) == "lerobot":
             from app.robot.lerobot_ctrl import LeRobotController
