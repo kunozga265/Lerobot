@@ -6,10 +6,10 @@ name = "pypi"
 [packages]
 pyside6 = "*"
 pyyaml = "*"
-lerobot = "*"
+lerobot = {extras = ["feetech"], version = "==0.6.1"}
 
 [dev-packages]
 pytest = "*"
 
 [requires]
-python_version = "3.14"
+python_version = "3.12"
