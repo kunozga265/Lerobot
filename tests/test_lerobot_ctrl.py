@@ -129,6 +129,18 @@ def test_place_fails_when_arm_never_returns_home():
     assert clock.now >= 8.0
 
 
+def test_place_fails_when_policy_never_leaves_home():
+    # A policy that outputs the home pose from the very first action never attempts the
+    # task - it must not be reported as a successful placement just because it's
+    # technically "near home" the whole time. This is the failure mode observed on the
+    # real rig: the arm barely moves when the box already has a piece in it.
+    policy = ScriptedPolicy(away_steps=0)
+    ctrl, _, clock = make_controller(policy, max_seconds=8.0)
+
+    assert ctrl.place_to("left") is False
+    assert clock.now >= 8.0  # ran the full timeout rather than exiting early at min_seconds
+
+
 def test_without_home_pose_runs_full_duration_and_trusts_it():
     policy = ScriptedPolicy(away_steps=10_000)
     ctrl, _, clock = make_controller(policy, home_pose=None, max_seconds=8.0)

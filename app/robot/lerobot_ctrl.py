@@ -127,6 +127,7 @@ class LeRobotController(RobotController):
         period = 1.0 / self.fps
         start = self._clock()
         obs = None
+        left_home = False
 
         while True:
             tick = self._clock()
@@ -137,8 +138,11 @@ class LeRobotController(RobotController):
                 if self._cancel.is_set():
                     return False
                 obs = self.robot.get_observation()
-                if self.home_pose and elapsed >= self.min_seconds and self._near_home(obs):
-                    return True
+                if self.home_pose:
+                    at_home = self._near_home(obs)
+                    left_home = left_home or not at_home
+                    if elapsed >= self.min_seconds and at_home and left_home:
+                        return True
                 images = self._policy_images(policy.camera_names)
                 if images is not None:
                     state = np.array([obs[k] for k in self._motor_keys], dtype=np.float32)
@@ -147,7 +151,10 @@ class LeRobotController(RobotController):
             self._sleep(max(0.0, period - (self._clock() - tick)))
 
         # Timed out. Without a saved home pose there's nothing to check, so trust the run.
-        return self.home_pose is None or (obs is not None and self._near_home(obs))
+        # With one, only count it as done if the arm actually left home and came back -
+        # sitting at home the whole run (a policy that never attempted anything) isn't a
+        # completed placement, even though it's technically "near home".
+        return self.home_pose is None or (left_home and obs is not None and self._near_home(obs))
 
     def return_from(self, box: Box) -> bool:
         raise NotImplementedError("no return skill was trained; a helper resets the shapes between rounds")
