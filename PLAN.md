@@ -29,7 +29,7 @@ Each phase has acceptance criteria — do not move on until they pass.
 ### Screens (GUI)
 1. **Welcome / Start page** — friendly title, short "how to play", big **Start** button, small **Quit** button.
 2. **Round screen** — shows:
-   - `Round N / 10` and current score
+   - `Round N / 5` and current score
    - the sum in large type, e.g. `3 + 2 = ?` (operator shown big and colourful: `+ − ×`)
    - a status line / mascot message for the current state:
      - "Watch the robot…" (robot setting up)
@@ -39,7 +39,7 @@ Each phase has acceptance criteria — do not move on until they pass.
      - "Well done! ✓" / "Not quite — the answer was 5" (with a count visual)
      - "Please clear the mat" (before next round)
    - optional live overhead camera preview (toggle, off by default for kids; on for demo/debug)
-3. **End screen** — final score `7 / 10` with stars/celebration, buttons **Play again** (new 10-round game) and **Exit** (back to Start page). The Start page's **Quit** closes the app.
+3. **End screen** — final score `4 / 5` with stars/celebration, buttons **Play again** (new 5-round game) and **Exit** (back to Start page). The Start page's **Quit** closes the app.
 
 ### Round rules
 - The program chooses an operation (+, −, ×) and two operands.
@@ -50,7 +50,7 @@ Each phase has acceptance criteria — do not move on until they pass.
   - `−`: a ∈ 2..6, b ∈ 1..a−1 (no negatives, no zero answers at first)
   - `×`: a, b ∈ 1..3 (and a×b ≤ 10), left box = groups, right box = items per group — show this in the GUI text ("2 groups of 3")
   - Also cap `a + b ≤ available margin pieces`.
-- Balance the 10 rounds: roughly 4 add, 3 subtract, 3 multiply; optional difficulty ramp.
+- 5 rounds per game (changed from 10 on 2026-09-24): 2 add, 1 subtract, 2 multiply (`game.rounds_per_game` / `game.operation_mix` in `config.yaml`).
 
 ### When is an answer submitted?
 Mark the answer only when **all** of these hold:
@@ -242,7 +242,7 @@ Start with classical CV (fast, no training):
 ### Phase 5 — Integration
 - Real robot + real vision in the game; delta-based reset between rounds; facilitator hotkeys; emergency stop.
 - Log every round to `logs/games.csv` (problem, intended counts, verified counts, child answer, correct, robot retries, timings).
-- **Accept:** 3 complete 10-round games in a row without facilitator intervention (hotkeys allowed for testing only).
+- **Accept:** 3 complete 5-round games in a row without facilitator intervention (hotkeys allowed for testing only).
 
 ### Phase 6 — Polish & demo
 - TTS, sounds, animations, full-screen, mascot, clear error screens (camera missing, robot not connected).

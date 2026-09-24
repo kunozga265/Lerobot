@@ -3,11 +3,11 @@
 # Phase 2+: `cameras`, `robot`, and calibration-derived ROIs get filled in.
 
 game:
-  rounds_per_game: 10
+  rounds_per_game: 5
   # 2 shapes per side of the margin -> robot can place at most 2 pieces per box.
   # With a cap of 2, "-" only has 2 - 1, so weight the mix towards "+" and "x".
   max_pieces_per_box: 2
-  operation_mix: { "+": 5, "-": 2, "*": 3 }
+  operation_mix: { "+": 2, "-": 1, "*": 2 }
   max_answer: 10
   hand_clear_seconds: 2.0
   count_stable_seconds: 1.5
