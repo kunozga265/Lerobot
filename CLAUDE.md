@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this project is
 
-A LeRobot-powered maths game for children (a "Robot Maths Tutor"). A robot arm places coloured shapes into two boxes to set up a sum (e.g. `3 + 2 = ?`); the child answers by laying coloured cylinder bars on a mat; an overhead camera counts everything, and a PySide6 GUI drives the game and shows feedback. See [PLAN.md §1–2](PLAN.md) for the full physical setup and game design (round rules, operand constraints, answer-submission timing).
+**Arithma** — a LeRobot-powered maths game for children. A robot arm places coloured shapes into two boxes to set up a sum (e.g. `3 + 2 = ?`); the child answers by laying coloured cylinder bars on a mat; an overhead camera counts everything, and a PySide6 GUI drives the game and shows feedback. See [PLAN.md §1–2](PLAN.md) for the full physical setup and game design (round rules, operand constraints, answer-submission timing).
 
 ## Environment
 

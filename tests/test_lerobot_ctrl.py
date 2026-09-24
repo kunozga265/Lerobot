@@ -5,7 +5,7 @@ import pytest
 
 from app.game.engine import GameEngine
 from app.hardware import HardwareError, build_hardware
-from app.robot.lerobot_ctrl import LeRobotController
+from app.robot.lerobot_ctrl import LeRobotController, _as_float_or_none
 from app.robot.mock_ctrl import MockRobotController
 from app.vision.mock_vision import MockVision
 
@@ -187,6 +187,20 @@ def test_engine_stop_passes_emergency_to_robot():
     engine.request_stop(emergency=True)
 
     assert stops == [False, True]
+
+
+def test_as_float_or_none_casts_plain_yaml_int_to_float():
+    # Regression case: config.yaml's `max_relative_target: 15` (no decimal point) parses
+    # as a Python int, which lerobot's ensure_safe_goal_position rejects outright - it
+    # only accepts float, dict[str, float], or None (see so_follower.py's isinstance
+    # checks), raising TypeError deep inside send_action on the first real placement.
+    result = _as_float_or_none(15)
+    assert result == 15.0
+    assert isinstance(result, float)
+
+
+def test_as_float_or_none_passes_through_none():
+    assert _as_float_or_none(None) is None
 
 
 def test_build_hardware_all_mock_opens_nothing():

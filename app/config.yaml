@@ -1,4 +1,4 @@
-# Robot Maths Tutor config.
+# Arithma config.
 # Phase 1: only `game` and `mock` sections are used (mock robot/vision, no hardware).
 # Phase 2+: `cameras`, `robot`, and calibration-derived ROIs get filled in.
 
@@ -26,7 +26,7 @@ robot:
   follower_port: /dev/tty.usbmodem5B610367201
   follower_id: my_awesome_follower_arm
   leader_port: /dev/tty.usbmodem5B3D0426861
-  max_relative_target: 15  # safety cap on per-step joint moves (degrees); PLAN.md §8
+  max_relative_target: 15.0  # safety cap on per-step joint moves (degrees); PLAN.md §8
   home_pose: null  # filled in by scripts/save_home_pose.py
   policies:
     device: mps
@@ -46,8 +46,8 @@ robot:
 cameras:
   overhead: 1  # CAMERA_EXTERNAL - fixed, sees the whole board (confirmed via lerobot-find-cameras)
   wrist: 0     # CAMERA_GRIPPER - mounted on the gripper
-  width: 1920  # capture size; the mat calibration below is in these pixels
-  height: 1080
+  width: 640  # capture size; the mat calibration below is in these pixels
+  height: 480
   fps: 30
 
 vision:

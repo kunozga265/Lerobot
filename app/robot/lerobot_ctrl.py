@@ -22,6 +22,13 @@ from app.robot.interface import Box, RobotController
 GRIPPER_KEY = "gripper.pos"  # ignored for the "near home" check: open/closed varies at home
 
 
+def _as_float_or_none(value: float | int | None) -> float | None:
+    """lerobot's ensure_safe_goal_position only accepts float, dict[str, float], or None
+    for max_relative_target - a plain YAML int (e.g. `15` without a decimal point) fails
+    its isinstance(x, float) check and raises TypeError deep inside send_action."""
+    return None if value is None else float(value)
+
+
 class FrameSource(Protocol):
     def get_frame(self, name: str) -> np.ndarray | None: ...
 
@@ -215,7 +222,7 @@ class LeRobotController(RobotController):
             SO101FollowerConfig(
                 port=robot_cfg["follower_port"],
                 id=robot_cfg["follower_id"],
-                max_relative_target=robot_cfg.get("max_relative_target"),
+                max_relative_target=_as_float_or_none(robot_cfg.get("max_relative_target")),
             )
         )
         robot.connect(calibrate=False)  # never prompt on stdin from inside the GUI

@@ -13,7 +13,7 @@ class StartScreen(QWidget):
         layout = QVBoxLayout(self)
         layout.addStretch()
 
-        title = QLabel("Robot Maths Tutor")
+        title = QLabel("Arithma")
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("font-size: 48px; font-weight: bold;")
         layout.addWidget(title)

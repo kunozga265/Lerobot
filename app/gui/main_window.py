@@ -20,7 +20,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.config = config
         self.hardware = hardware or Hardware()  # real robot/vision if built; mocks fill the gaps
-        self.setWindowTitle("Robot Maths Tutor")
+        self.setWindowTitle("Arithma")
         self.resize(1000, 700)
 
         self.stack = QStackedWidget()

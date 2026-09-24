@@ -1,4 +1,4 @@
-# Robot Maths Tutor — Project Plan
+# Arithma — Project Plan
 
 A LeRobot-powered maths game for children. The robot arm sets up a sum by placing
 coloured shapes into two taped boxes; the child answers by laying thin cylinders
