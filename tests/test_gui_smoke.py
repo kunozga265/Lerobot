@@ -147,6 +147,7 @@ def test_round_screen_hotkeys(qapp):
 
     QTest.keyClick(screen, Qt.Key_Escape)
     assert engine.stop_calls == 1
+    assert engine.last_stop_emergency is True  # Esc is the emergency stop (torque off)
 
     screen.close()
 
@@ -165,8 +166,9 @@ class _FakeEngine:
     def request_skip_round(self):
         self.skip_calls += 1
 
-    def request_stop(self):
+    def request_stop(self, emergency=False):
         self.stop_calls += 1
+        self.last_stop_emergency = emergency
 
     def request_go_home(self):
         self.go_home_calls += 1

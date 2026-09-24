@@ -10,14 +10,16 @@ from app.gui.end_screen import EndScreen
 from app.gui.engine_thread import EngineThread
 from app.gui.round_screen import RoundScreen
 from app.gui.start_screen import StartScreen
+from app.hardware import Hardware
 from app.robot.mock_ctrl import MockRobotController
 from app.vision.mock_vision import MockVision
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, hardware: Hardware | None = None):
         super().__init__()
         self.config = config
+        self.hardware = hardware or Hardware()  # real robot/vision if built; mocks fill the gaps
         self.setWindowTitle("Robot Maths Tutor")
         self.resize(1000, 700)
 
@@ -62,13 +64,15 @@ class MainWindow(QMainWindow):
     def start_new_game(self) -> None:
         self._stop_current_game()
 
-        vision = MockVision()
-        robot = MockRobotController(
-            vision, seconds_per_piece=self.config["mock"]["robot_seconds_per_piece"]
+        mock_board = MockVision()
+        vision = self.hardware.vision or mock_board
+        robot = self.hardware.robot or MockRobotController(
+            mock_board, seconds_per_piece=self.config["mock"]["robot_seconds_per_piece"]
         )
         engine = GameEngine(robot, vision, self.config["game"])
 
-        self.round_screen.bind_mock_vision(vision)
+        # The keyboard-driven mock panel only makes sense when the mat itself is mocked.
+        self.round_screen.bind_mock_vision(mock_board if self.hardware.vision is None else None)
         self.round_screen.bind_engine(engine)
         self.round_screen.reset(rounds=self.config["game"]["rounds_per_game"])
 
@@ -105,4 +109,5 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:
         self._stop_current_game()
+        self.hardware.close()
         super().closeEvent(event)

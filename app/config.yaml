@@ -21,16 +21,37 @@ gui:
   sound_enabled: true
 
 robot:
+  mode: mock   # mock | lerobot  (lerobot = real SO-101 running the trained ACT skills)
   type: so101
-  follower_port: null
-  leader_port: null
-  home_pose: null
+  follower_port: /dev/tty.usbmodem5B610367201
+  follower_id: my_awesome_follower_arm
+  leader_port: /dev/tty.usbmodem5B3D0426861
+  max_relative_target: 15  # safety cap on per-step joint moves (degrees); PLAN.md §8
+  home_pose: null  # filled in by scripts/save_home_pose.py
+  policies:
+    device: mps
+    fps: 30
+    min_seconds: 3.0    # don't accept "back home" before the arm has left
+    max_seconds: 20.0   # give up on a placement after this long
+    home_tolerance: 4.0 # degrees per joint (gripper ignored)
+    image_width: 640    # frames are resized to what the policy saw while recording
+    image_height: 480
+    left:
+      path: honestogarrido/act_place_left
+      task: Pick a piece from the margin and place it in the left box
+    right:
+      path: honestogarrido/act_place_right
+      task: Pick a piece from the margin and place it in the right box
 
 cameras:
   overhead: 1  # CAMERA_EXTERNAL - fixed, sees the whole board (confirmed via lerobot-find-cameras)
   wrist: 0     # CAMERA_GRIPPER - mounted on the gripper
+  width: 1920  # capture size; the mat calibration below is in these pixels
+  height: 1080
+  fps: 30
 
 vision:
+  mode: mock   # mock | live  (live = real answer-mat camera, INTEGRATION_PLAN.md step 3)
   board_width: 1060
   board_height: 700
   homography:

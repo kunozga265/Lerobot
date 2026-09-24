@@ -1,4 +1,5 @@
-"""Entry point for the Robot Maths Tutor (Phase 1: mock robot + mock vision)."""
+"""Entry point for the Robot Maths Tutor. `robot.mode` / `vision.mode` in config.yaml
+choose mock or real parts (see app/hardware.py)."""
 
 from __future__ import annotations
 
@@ -6,9 +7,10 @@ import sys
 from pathlib import Path
 
 import yaml
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from app.gui.main_window import MainWindow
+from app.hardware import HardwareError, build_hardware
 
 CONFIG_PATH = Path(__file__).parent / "config.yaml"
 
@@ -21,7 +23,12 @@ def load_config() -> dict:
 def main() -> None:
     config = load_config()
     app = QApplication(sys.argv)
-    window = MainWindow(config)
+    try:
+        hardware = build_hardware(config)
+    except HardwareError as e:
+        QMessageBox.critical(None, "Robot Maths Tutor: hardware problem", str(e))
+        sys.exit(1)
+    window = MainWindow(config, hardware)
     window.show()
     sys.exit(app.exec())
 

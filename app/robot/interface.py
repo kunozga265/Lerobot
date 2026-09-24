@@ -22,3 +22,7 @@ class RobotController(ABC):
     @abstractmethod
     def go_home(self) -> None:
         """Return the arm to its fixed home pose."""
+
+    def stop(self, emergency: bool = False) -> None:
+        """Abort any motion in progress. `emergency=True` (Esc) also turns motor torque off;
+        the next `place_to`/`go_home` turns it back on. No-op for robots with nothing to stop."""

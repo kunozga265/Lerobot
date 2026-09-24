@@ -273,7 +273,13 @@ def main() -> None:
         print("config.yaml: cameras.overhead is not set. Set it, then re-run.")
         return
 
-    manager = CameraManager({"overhead": overhead_index})
+    cam_cfg = config["cameras"]
+    # Same capture size as the game (config cameras.width/height): the mat ROI is in these pixels.
+    manager = CameraManager(
+        {"overhead": overhead_index},
+        width=cam_cfg.get("width", 1920),
+        height=cam_cfg.get("height", 1080),
+    )
     if not manager.open().get("overhead"):
         print(f"Could not open the overhead camera at index {overhead_index}.")
         return
@@ -317,6 +323,7 @@ def main() -> None:
                 continue
 
             vision = {
+                **config.get("vision", {}),  # keep non-calibration keys (e.g. vision.mode)
                 "board_width": BOARD_WIDTH,
                 "board_height": BOARD_HEIGHT,
                 "homography": [[round(v, 6) for v in row] for row in homography.tolist()],

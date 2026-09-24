@@ -4,6 +4,7 @@ any worker thread and be unit tested directly; the GUI wraps it in a QThread."""
 from __future__ import annotations
 
 import random
+import threading
 import time
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -114,11 +115,19 @@ class GameEngine:
     def request_skip_round(self) -> None:
         self._skip_requested = True
 
-    def request_stop(self) -> None:
+    def request_stop(self, emergency: bool = False) -> None:
+        """End the game and abort any robot motion. `emergency` (Esc) also cuts motor torque."""
         self._stop_requested = True
+        self.robot.stop(emergency=emergency)
 
     def request_go_home(self) -> None:
-        self.robot.go_home()
+        # Called from the GUI thread (R key); a real arm takes seconds to get home, so
+        # abort whatever it's doing and move on a separate thread to keep the GUI live.
+        def go_home() -> None:
+            self.robot.stop()
+            self.robot.go_home()
+
+        threading.Thread(target=go_home, daemon=True).start()
 
     def request_boxes_ready(self) -> None:
         """Helper confirms the shapes are back on their margin spots (Enter)."""
@@ -165,7 +174,7 @@ class GameEngine:
         """Command the robot to place `a` pieces left and `b` right. The sum shown is what
         was commanded, not a vision recount, so a dropped piece never changes the answer."""
         self._set_state(GameState.ROUND_SETUP)
-        self._status("Watch the robot…")
+        self._status("Watch the robot… hands off the boxes!")
         failed = 0
         for box, count in (("left", planned.a), ("right", planned.b)):
             for _ in range(count):

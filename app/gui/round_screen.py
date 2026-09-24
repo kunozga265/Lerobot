@@ -105,7 +105,7 @@ class RoundScreen(QWidget):
             return
 
         if key == Qt.Key_Escape:
-            self.engine.request_stop()
+            self.engine.request_stop(emergency=True)
         elif key == Qt.Key_Space:
             self.engine.request_force_submit()
         elif text.lower() == "n":
@@ -128,6 +128,7 @@ class RoundScreen(QWidget):
             super().keyPressEvent(event)
 
     def _refresh_mock_panel(self) -> None:
+        self.mock_panel.setVisible(self.vision is not None)
         hand = "hand ON mat" if self._hand_on_mat else "hand clear"
         self.mock_panel.setText(
             f"[dev] bars={self._bars} ({hand}) — 0–9 set bars, H toggle hand, "
